@@ -1,0 +1,12 @@
+# pycache
+__pycache__/
+*.pyc
+
+# test file
+*develop/
+*test*
+git-batch-upload.bat
+split_csv.ipynb
+
+# vscode
+.vscode/
