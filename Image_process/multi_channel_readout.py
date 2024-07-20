@@ -12,13 +12,12 @@ from skimage.io import imread
 from scipy.spatial import KDTree
 from skimage.feature import peak_local_max
 import tifffile
-# import dask.array as da
-# from dask_image.imread import imread as da_imread
+from pprint import pprint
 
 
 CHANNELS = ['cy5', 'TxRed', 'cy3', 'FAM']
-BASE_DIR = Path(r"F:\spatial_data\processed")
-RUN_ID = '20231226_FFPE_trial5_PRISM_3um_H2O2_after_FISH'
+BASE_DIR = Path(r'F:\spatial_data\processed')
+RUN_ID = '20240626_FFPE_PRISM30_HCC_CA_5um_SudanBB'
 src_dir = BASE_DIR / f'{RUN_ID}_processed'
 stc_dir = src_dir / 'stitched'
 read_dir = src_dir / 'readout'
@@ -26,13 +25,22 @@ tmp_dir = read_dir / 'tmp'
 os.makedirs(read_dir, exist_ok=True)
 os.makedirs(tmp_dir, exist_ok=True)
 
+# parameters
 TOPHAT_KERNEL_SIZE = 7
-SUM_THRESHOLD = 500
-CHECK_SNR = True
+TOPHAT_BREAK = 100
+LOCAL_MAX_ABS_THRE = 100 # 200
+INTENSITY_THRE = None # INTENSITY_ABS_THRE should be a little bigger than LOCAL_MAX_ABS_THRE
+CAL_SNR = False
+
+# Threshold after extracting points
+SUM_THRESHOLD = 500 # SUM_THRESHOLD should be 5 * INTENSITY_ABS_THRE
+G_ABS_THRESHOLD = 1500
+G_THRESHOLD = 3 #
+G_MAXVALUE = 5 #
+
 
 def tophat_spots(image):
-    kernel = cv2.getStructuringElement(
-        cv2.MORPH_ELLIPSE, (TOPHAT_KERNEL_SIZE, TOPHAT_KERNEL_SIZE))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (TOPHAT_KERNEL_SIZE, TOPHAT_KERNEL_SIZE))
     return cv2.morphologyEx(image, cv2.MORPH_TOPHAT, kernel)
 
 
@@ -74,15 +82,18 @@ def divide_main(shape, max_volume=10**8, overlap=500, data_dict=None):
     return decorator
 
 
-def extract_coordinates(image, threshold_abs, quantile=0.96):
+def extract_coordinates(image, local_max_thre=200, intensity_thre=None): #quantile=0.96):
     meta = {}
-    coordinates = peak_local_max(image, min_distance=2, threshold_abs=threshold_abs)
+    coordinates = peak_local_max(image, min_distance=2, threshold_abs=local_max_thre)
     meta['Coordinates brighter than given SNR'] = coordinates.shape[0]
     meta['Image mean intensity'] = float(np.mean(image))
-    intensities = image[coordinates[:, 0], coordinates[:, 1]]
-    meta[f'{quantile} quantile'] = float(np.quantile(intensities, quantile))
-    threshold = np.quantile(intensities, quantile)
-    coordinates = coordinates[image[coordinates[:, 0], coordinates[:, 1]] > threshold]
+    if intensity_thre is not None:
+        if intensity_thre<=1:
+            intensities = image[coordinates[:, 0], coordinates[:, 1]]
+            meta[f'{intensity_thre} quantile'] = float(np.quantile(intensities, intensity_thre))
+            intensity_thre = np.quantile(intensities, intensity_thre)
+        coordinates = coordinates[image[coordinates[:, 0], coordinates[:, 1]]>intensity_thre]
+
     meta['Final spots count'] = coordinates.shape[0]
     return coordinates
 
@@ -124,14 +135,21 @@ def calculate_snr(image, points, neighborhood_size=10, verbose=True):
     return snr_values
 
 
-def extract_signal(image_big, pad_x, cut_x, pad_y, cut_y, tophat_mean, check_snr=False,
-                   QUANTILE=0.1, kernel=np.ones((5, 5), np.uint8), snr=8):
+def extract_signal(image_big, pad_x, cut_x, pad_y, cut_y, 
+                   tophat_mean, snr=8, # peak local max threshold
+                   QUANTILE=0.1, # intensity threshold
+                   check_snr=False, 
+                   kernel=np.ones((5, 5), np.uint8)):
 
     image_raw = image_big[pad_y: pad_y + cut_y, pad_x: pad_x + cut_x]
     # tophat spots
     image = tophat_spots(image_raw)
+    image[image < TOPHAT_BREAK] = 0
+
     # extract coordinates
-    coordinates = extract_coordinates(image, threshold_abs=snr * tophat_mean, quantile=QUANTILE)
+    # coordinates = extract_coordinates(image, threshold_abs=snr * tophat_mean, quantile=QUANTILE)
+    coordinates = extract_coordinates(image, local_max_thre=min(LOCAL_MAX_ABS_THRE, tophat_mean * snr), intensity_thre=INTENSITY_THRE) #quantile=QUANTILE)
+
     if check_snr: snr = calculate_snr(image_raw, coordinates)
     else: snr = None
     del image_raw
@@ -181,7 +199,6 @@ def remove_duplicates(coordinates):
     return centroids_simplified
 
 
-
 def main(max_memory = 24): # unit: GB
     with tifffile.TiffFile(stc_dir/f'cyc_1_{CHANNELS[0]}.tif') as tif:
         image_shape = tif.series[0].shape
@@ -218,7 +235,8 @@ def main(max_memory = 24): # unit: GB
                 del memmap_array
 
             tophat_mean_dict[channel] = np.mean(tophat_spots(image))
-    # print(tophat_mean_dict)
+    print('tophat_mean:')
+    pprint(tophat_mean_dict)
     
 
     @divide_main(shape=image_shape, max_volume=max_volume, overlap=500)
@@ -234,10 +252,11 @@ def main(max_memory = 24): # unit: GB
         coordinate_dict = {}
         snr_dict = {}
 
-        def process_channel(channel, check_snr=CHECK_SNR):
+        def process_channel(channel, check_snr=CAL_SNR):
             image_path = tmp_dir / f'cyc_1_{channel}.dat'
             image = np.memmap(str(image_path), dtype=memmap_dtype, mode='r', shape=memmap_shape)
-            coordinate, snr, image_data = extract_signal(image, pad_x, cut_x, pad_y, cut_y, snr=8, tophat_mean=tophat_mean_dict[channel], check_snr=check_snr)
+            coordinate, snr, image_data = extract_signal(image, pad_x, cut_x, pad_y, cut_y, 
+                                                         snr=8, tophat_mean=tophat_mean_dict[channel], check_snr=check_snr)
             return channel, coordinate, snr, image_data
         
         with Pool() as pool:
@@ -246,20 +265,21 @@ def main(max_memory = 24): # unit: GB
         for channel, coordinate, snr, image_data in results:
             coordinate_dict[channel] = coordinate
             image_dict[channel] = image_data
-            if CHECK_SNR: snr_dict[channel] = snr
+            if CAL_SNR: snr_dict[channel] = snr
 
         # for channel in channels:
         #     # extract signal
         #     image= np.memmap(stc_dir/f'cyc_1_{channel}.dat', dtype=memmap_dtype, mode='r', shape=memmap_shape) 
         #     coordinate_dict[channel], image_dict[channel] = extract_signal(
         #         image, pad_x, cut_x, pad_y, cut_y, snr=8, tophat_mean=tophat_mean_dict[channel])
-        if CHECK_SNR: intensity = pd.concat([read_intensity(image_dict, coordinate_dict[channel], channel=channel, snr=snr_dict[channel]) for channel in coordinate_dict.keys()])
+        if CAL_SNR: intensity = pd.concat([read_intensity(image_dict, coordinate_dict[channel], channel=channel, snr=snr_dict[channel]) for channel in coordinate_dict.keys()])
         else: intensity = pd.concat([read_intensity(image_dict, coordinate_dict[channel], channel=channel) for channel in coordinate_dict.keys()])
         intensity['X'] = intensity['X'] + pad_x
         intensity['Y'] = intensity['Y'] + pad_y
         intensity.to_csv(tmp_dir / f'intensity_block_{x_pos}_{y_pos}.csv')
 
     extract_intensity(channels=CHANNELS)
+
 
     # stitch all block
     global intensity
@@ -280,25 +300,25 @@ def main(max_memory = 24): # unit: GB
 
         tmp_intensity = pd.read_csv(tmp_dir / f'intensity_block_{x_pos}_{y_pos}.csv', index_col=0)
         xmin, xmax = pad_x + overlap//4, pad_x + cut_x - overlap//4
-        if x_pos == 1:
-            xmin = 0
-        elif x_pos == x_num:
-            xmax = pad_x + cut_x
+        if x_pos == 1: xmin = 0
+        elif x_pos == x_num: xmax = pad_x + cut_x
+
         ymin, ymax = pad_y + overlap//4, pad_y + cut_y - overlap//4
-        if y_pos == 1:
-            ymin = 0
-        elif y_pos == y_num:
-            ymax = pad_y + cut_y
+        if y_pos == 1: ymin = 0
+        elif y_pos == y_num: ymax = pad_y + cut_y
+
         tmp_intensity = tmp_intensity[(tmp_intensity['Y'] >= ymin) & (tmp_intensity['Y'] <= ymax) &
                                       (tmp_intensity['X'] >= xmin) & (tmp_intensity['X'] <= xmax)]
+        
         intensity = pd.concat([intensity, tmp_intensity])
 
     stitch_all_block()
 
+
     # save original intensity file
     intensity = intensity.rename(columns={'cy5': 'R', 'TxRed': 'Ye', 'cy3': 'G', 'FAM': 'B'})
     intensity = intensity.reset_index(drop=True)
-    intensity.to_csv(tmp_dir / 'intensity_all.csv')
+    intensity.to_csv(tmp_dir / 'intensity_raw.csv')
     print('raw_read:', len(intensity))
 
     # crosstalk elimination
@@ -312,19 +332,20 @@ def main(max_memory = 24): # unit: GB
     intensity['Scaled_B'] = intensity['B']
 
     # threshold by intensity
-    intensity['sum'] = intensity['Scaled_R'] + intensity['Scaled_Ye'] + intensity['Scaled_B']
-    intensity = intensity[intensity['sum']>=SUM_THRESHOLD]
-    print('drop_low_intensity:', len(intensity))
+    intensity['sum'] = intensity['Scaled_R'] + intensity['Scaled_Ye'] + intensity['Scaled_B'] + 1
 
     # normalize
-    intensity['R/A'] = intensity['Scaled_R'] / intensity['sum']
-    intensity['Ye/A'] = intensity['Scaled_Ye'] / intensity['sum']
-    intensity['B/A'] = intensity['Scaled_B'] / intensity['sum']
+    # intensity['R/A'] = intensity['Scaled_R'] / intensity['sum']
+    # intensity['Ye/A'] = intensity['Scaled_Ye'] / intensity['sum']
+    # intensity['B/A'] = intensity['Scaled_B'] / intensity['sum']
     intensity['G/A'] = intensity['Scaled_G'] / intensity['sum']
 
+    # threshold by intensity
+    intensity = intensity[(intensity['sum'] >= SUM_THRESHOLD) | ((intensity['G/A'] >= G_THRESHOLD) & (intensity['Scaled_G'] > G_ABS_THRESHOLD))]
     intensity = intensity.dropna()
-    intensity.loc[intensity['G/A'] > 5, 'G/A'] = 5
-    intensity['G/A'] = intensity['G/A'] * np.exp(0.8 * intensity['Ye/A'])
+    intensity.loc[intensity['G/A'] > G_MAXVALUE, 'G/A'] = G_MAXVALUE
+    # intensity['G/A'] = intensity['G/A'] * np.exp(0.8 * intensity['Ye/A'])
+    print('drop_low_intensity:', len(intensity))
 
 
     # deduplicate
@@ -340,29 +361,26 @@ def main(max_memory = 24): # unit: GB
     df_reduced['ID'] = df_reduced['Y'] * 10**7 + df_reduced['X']
     intensity = intensity[intensity['ID'].isin(df_reduced['ID'])]
     intensity = intensity.drop(columns=['ID'])
-
-
-    # transform
-    RYB_x_transform = np.array([[-np.sqrt(2)/2], [0], [np.sqrt(2)/2]])
-    RYB_y_transform = np.array([[-np.sqrt(3)/3], [2/np.sqrt(3)], [-np.sqrt(3)/3]])
-    intensity['X_coor'] = intensity[['Ye/A', 'B/A', 'R/A',]] @ RYB_x_transform
-    intensity['Y_coor'] = intensity[['Ye/A', 'B/A', 'R/A',]] @ RYB_y_transform
-
     intensity.to_csv(read_dir / 'intensity_deduplicated.csv')
     print('deduplicate:', len(intensity))
 
-
     # remove tmp files
-    for file_path in glob.glob(str(tmp_dir / '*.dat')):
-        os.remove(file_path)
+    for file_path in glob.glob(str(tmp_dir / '*.dat')): os.remove(file_path)
     print(f"Removed .dat files")
         
-    # remove tmp files
     # if os.path.exists(tmp_dir):
     #     shutil.rmtree(tmp_dir)
     #     print(f"The directory '{tmp_dir}' and all its contents have been removed.")
     # else: print(f"The directory '{tmp_dir}' does not exist.")
 
 if __name__ == '__main__':
+    # copy this file to the dest_dir
+    current_file_path = os.path.abspath(__file__)
+    target_file_path = os.path.join(read_dir, os.path.basename(current_file_path))
+    try: shutil.copy(current_file_path, target_file_path)
+    except shutil.SameFileError: print('The file already exists in the destination directory.')
+    except PermissionError: print("Permission denied: Unable to copy the file.")
+    except FileNotFoundError: print("File not found: Source file does not exist.")
+    except Exception as e: print(f"An error occurred: {e}")
     print('RUN_ID:', RUN_ID)
     main()

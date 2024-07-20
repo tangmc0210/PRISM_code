@@ -86,6 +86,71 @@ def register_manual(ref_dir, src_dir, dest_dir, im_names=None):
         imsave(dest_dir/im_name, out_im, check_contrast=False)
 
 
+# def register_meta(in_dir, out_dir, chns, names, ref_cyc=1, ref_chn='cy3'):
+#     """Register all images in a directory.
+
+#     Parameters
+#     ----------
+#     in_dir : str
+#         Input directory.
+#     out_dir : str
+#         Output directory.
+#     chns : list
+#         Channels to register.
+#     names : list
+#         Names of the images to register.
+#     ref_cyc : int
+#         Cycle to use as reference.
+#     ref_chn : str
+#         Channel to use as reference.
+
+#     Returns
+#     -------
+#     df : pandas.DataFrame
+#         DataFrame of the integer offsets for stitching.
+#     """
+#     try_mkdir(out_dir)
+#     pattern = r'^cyc_\d+_\w+'
+#     alt_chns = [c for c in chns if c != ref_chn]
+#     cyc_chn_list = Path(in_dir).glob('cyc_*_*')
+#     cyc_chn_list = [c for c in cyc_chn_list if re.match(pattern, c.name)]
+#     src_list = [c for c in cyc_chn_list if c.name.split('_')[1] == str(ref_cyc)]
+#     for d in tqdm(src_list, desc='Copying reference'): 
+#         if not (Path(out_dir)/d.name).is_dir(): shutil.copytree(d, Path(out_dir)/d.name)
+#     df = pd.DataFrame()
+#     ref_list = [c for c in cyc_chn_list if c.name.split('_')[2] == ref_chn]
+#     ref_dir = Path(in_dir)/f'cyc_{ref_cyc}_{ref_chn}'
+#     ref_list.remove(ref_dir)
+#     for name in tqdm(names, desc='Registering'):
+#         offsets = []
+#         ref_im = imread(ref_dir/name)
+#         for cyc_chn in ref_list:
+#             cyc = cyc_chn.name.split('_')[1]
+#             src_im = imread(cyc_chn/name)
+#             dest_dir = Path(out_dir)/cyc_chn.name
+#             dest_dir.mkdir(exist_ok=True)
+#             try:
+#                 shift = get_shift(ref_im, src_im)
+#             except AttributeError:
+#                 offsets.append('0 0')
+#                 continue
+#             shift_res = shift - np.round(shift)
+#             offsets.append(np.array2string(np.round(shift).astype(int)).strip('[ ]'))
+#             out_im = register(src_im, shift_res)
+#             imsave(dest_dir/name, out_im, check_contrast=False)
+#             for chn in alt_chns:
+#                 cyc_chn_alt = Path(in_dir)/f'cyc_{cyc}_{chn}'
+#                 if cyc_chn_alt in cyc_chn_list:
+#                     dest_dir_alt = Path(out_dir)/cyc_chn_alt.name
+#                     dest_dir_alt.mkdir(exist_ok=True)
+#                     src_im = imread(cyc_chn_alt/name)
+#                     out_im = register(src_im, shift_res)
+#                     imsave(dest_dir_alt/name, out_im, check_contrast=False)
+#         df[name] = offsets
+#     df.index = [s.name.split('_')[1] for s in ref_list]
+#     return df
+
+
 def register_meta(in_dir, out_dir, chns, names, ref_cyc=1, ref_chn='cy3'):
     """Register all images in a directory.
 
@@ -108,48 +173,57 @@ def register_meta(in_dir, out_dir, chns, names, ref_cyc=1, ref_chn='cy3'):
     -------
     df : pandas.DataFrame
         DataFrame of the integer offsets for stitching.
-
     """
+
     try_mkdir(out_dir)
     pattern = r'^cyc_\d+_\w+'
-    alt_chns = [c for c in chns if c != ref_chn]
-    cyc_chn_list = Path(in_dir).glob('cyc_*_*')
-    cyc_chn_list = [c for c in cyc_chn_list if re.match(pattern, c.name)]
+    cyc_chn_list = [c for c in Path(in_dir).glob('cyc_*_*') if re.match(pattern, c.name)]
     src_list = [c for c in cyc_chn_list if c.name.split('_')[1] == str(ref_cyc)]
+    
+    # Copy reference directories
     for d in tqdm(src_list, desc='Copying reference'):
-        if not (Path(out_dir)/d.name).is_dir():
-            shutil.copytree(d, Path(out_dir)/d.name)
-    df = pd.DataFrame()
+        dest_path = Path(out_dir) / d.name
+        if not dest_path.is_dir():
+            shutil.copytree(d, dest_path)
+    
+    offset_dict = {}
+    ref_dir = Path(in_dir) / f'cyc_{ref_cyc}_{ref_chn}'
     ref_list = [c for c in cyc_chn_list if c.name.split('_')[2] == ref_chn]
-    ref_dir = Path(in_dir)/f'cyc_{ref_cyc}_{ref_chn}'
-    ref_list.remove(ref_dir)
+    if ref_dir in ref_list:
+        ref_list.remove(ref_dir)
+
     for name in tqdm(names, desc='Registering'):
         offsets = []
-        ref_im = imread(ref_dir/name)
+        ref_im = imread(ref_dir / name)
         for cyc_chn in ref_list:
             cyc = cyc_chn.name.split('_')[1]
-            src_im = imread(cyc_chn/name)
-            dest_dir = Path(out_dir)/cyc_chn.name
+            src_im = imread(cyc_chn / name)
+            dest_dir = Path(out_dir) / cyc_chn.name
             dest_dir.mkdir(exist_ok=True)
             try:
                 shift = get_shift(ref_im, src_im)
+                shift_res = shift - np.round(shift)
+                offset = np.array2string(np.round(shift).astype(int)).strip('[ ]')
             except AttributeError:
-                offsets.append('0 0')
-                continue
-            shift_res = shift - np.round(shift)
-            offsets.append(np.array2string(np.round(shift).astype(int)).strip('[ ]'))
+                offset = '0 0'
+            
+            offsets.append(offset)
             out_im = register(src_im, shift_res)
-            imsave(dest_dir/name, out_im, check_contrast=False)
-            for chn in alt_chns:
-                cyc_chn_alt = Path(in_dir)/f'cyc_{cyc}_{chn}'
+            imsave(dest_dir / name, out_im, check_contrast=False)
+            
+            for chn in [c for c in chns if c != ref_chn]:
+                cyc_chn_alt = Path(in_dir) / f'cyc_{cyc}_{chn}'
                 if cyc_chn_alt in cyc_chn_list:
-                    dest_dir_alt = Path(out_dir)/cyc_chn_alt.name
+                    dest_dir_alt = Path(out_dir) / cyc_chn_alt.name
                     dest_dir_alt.mkdir(exist_ok=True)
-                    src_im = imread(cyc_chn_alt/name)
+                    src_im = imread(cyc_chn_alt / name)
                     out_im = register(src_im, shift_res)
-                    imsave(dest_dir_alt/name, out_im, check_contrast=False)
-        df[name] = offsets
-    df.index = [s.name.split('_')[1] for s in ref_list]
+                    imsave(dest_dir_alt / name, out_im, check_contrast=False)
+
+        offset_dict[name] = offsets
+
+    # Create DataFrame once at the end
+    df = pd.DataFrame(offset_dict, index=[cyc_chn.name.split('_')[1] for cyc_chn in ref_list])
     return df
 
 

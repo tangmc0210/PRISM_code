@@ -1,14 +1,42 @@
-# PRISM
+# PRISM_Code
 
 PRISM (**P**rofiling of **R**NA **I**n-situ through **S**ingle-round i**M**aging) is an innovative method that employs an radius vector code to distinguish a wide array of RNA transcripts in large-scale tissues with sub-micron resolution through a single staining and imaging cycle, which make it fast and free of prblems of traditional methods like shifting and alignment.
 
-For more information, please read the article.
+For more information, please read the article: [PRISM: Multiplexed Profiling of RNA In-Situ through Single-round of Imaging in Three-Dimensional Tissue](https://doi.org/10.1101/2024.06.29.601330).
 
-# Code Preview
+# Code and Pipeline Preview
 
 Code for PRISM consists of the following parts: **probe_designer**, **image_process**, **gene_calling** **cell_segmentation**, **analysis_cell_typing** and **analysis_suncellular**. Data will be processed in this order.
 
-# Data Architecture
+The pipeline can be explained as:
+
+```shell
++-------------+     +------------+     +---------------+     +------------------+     +--------------+     +-----------------+
+| ProbeDesign | --> | Experiment | --> | 2D Data Stack | --> | 2D Image Process | --> | Gene Calling | --> | 2D Cell Segment |
++-------------+     +------------+     +---------------+     +------------------+     +--------------+     +-----------------+
+                        or|                 or|                                                                 |
+                          v                   v                                                                 v
+                      +---------+     +------------------+     +--------------+     +-----------------+    +----------+
+                      | 3D Data | --> | 3D Image Process | --> | Gene Calling | --> | 3D Cell Segment |--> | Analysis |
+                      +---------+     +------------------+     +--------------+     +-----------------+    +----------+
+```
+
+# Data and Architecture
+
+## How to get our data
+
+Stitched raw images are provided in zenodo.org, download from it based on your need.
+
+> 1. [MouseBrain3D](https://zenodo.org/uploads/12673246?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6ImRhOTQwOGFjLThjMjEtNDBiZi05ZDlmLTM3ZDg1ZGUxYTUyNSIsImRhdGEiOnt9LCJyYW5kb20iOiI1NWJjNDdhZTg3MWQwNzZkNDViYTY5YjUzZTI5ZGNiOSJ9.eAEcp3719F4CaC4xVkriLfW4lFNvNjQXocK44X9P7umPDPsxZPpx9dhKyQ5jh8pJyrPhLmXQxOxenkUlTP5D5w)
+> 2. [HCC](https://zenodo.org/uploads/12750711?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6IjU0ZTViMzkxLTAyZmEtNGRjNy1hYzhmLTU1OTYyNGVhYzA3YyIsImRhdGEiOnt9LCJyYW5kb20iOiI5YzJhNWY1ZDZmMjlhMjI3MDJjOTA4Mzk0OTliZDQ5NyJ9.VUDVHe4llxiAC9lyRDTWL6g1YAp4fjFObJ3yfe_Bau0oFkA2C0yFLEiTFCabVUA1qHQy9NP5jPv8n6Dxxiw7rg)
+> 3. [MouseEmbryo](https://zenodo.org/uploads/12750725?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6IjNmMGQzNDhjLWYwOTItNDkzMy04MzEyLWNjNzVkNWY2YTc4NyIsImRhdGEiOnt9LCJyYW5kb20iOiI4MDJhYjhkMGRiYmM3NjE0MzJmNTVmZWE2MTNhZTcwZSJ9.T-2r0mRpqdI4cOm0Dl_vYfcpqjObMqVgL4eFWlmL-6eCMdbfVdRzpHZj9Ld9OdRXksJ9dMft5ui09AyJJqaadQ)
+> 4. [Cell typing and Analysis](https://zenodo.org/uploads/12755414?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6ImVlMGRjMGM1LTZiODEtNGIwOS1hYWFmLTRmZDEwY2JhYjI1MCIsImRhdGEiOnt9LCJyYW5kb20iOiI5ODg5MDM4NWI1YThhYWZkZTI3OGQ2MDUwNDliYjljYiJ9.oBUGRSG7oiGfyJqBZan9a4jdJSi938n2T-HJ2u50xBJX0QbYXzm-sQU--lk2RXIwz6QK9phTQ47dGRM13NcNPQ)
+
+We also provided **HCC2D** unstitched raw images in [PkuNetdisk](https://disk.pku.edu.cn/link/AA83FADBB90EB14BAE8E9DE5889E94AFF9). Download them and decompress the images using the script in the folder.
+
+**For more raw data, contact us: huanglab111@gmail.com.**
+
+## Data architecture
 
 Raw data base directory and processed data output directory can be whatever place you need. But its subdirectory should be like this:
 
@@ -69,20 +97,6 @@ read_dir = src_dir / 'readout'              # multi_channel_readout.py
 seg_dir = src_dir / 'segmented'             # segment2D.py or segment3D.py or expression_matrix.py
 visual_dir = src_dir / 'visualization'      # folder for figures...
 ```
-
-## How to get our data
-
-raw data are provided in [spatial_transcriptome_raw_data](https://github.com/huanglab111/spatial_transcriptome_raw_data/), download from it based on your need.
-
-Some raw data for our articles are uploaded as:
-
-- HCC2D: `spatial_transcriptome_raw_data\20230523_HCC_PRISM_probe_refined`
-
-For higher speed, HCC2D raw images are provided in [PkuNetdisk](https://disk.pku.edu.cn/link/AA83FADBB90EB14BAE8E9DE5889E94AFF9). Download them and decompress the images using the script in the folder.
-
-Processed data are provided in corresponding folders, run `merge_csv.ipynb` to merge too large files(larger than 100MB so that can't be uploaded directly to GitHub).
-
-For more raw data, contact us from huanglab111@gmail.com.
 
 # Pipeline
 
@@ -257,21 +271,21 @@ Cell typing analysis were performed based on the feature of each sample and may 
 ```shell
 dataset_sc_rnaseq
 ├─sc_data_HCC
-│  ├─processed_CNP0000650_CD45-
-│  │      HCC_cell_metadata.txt
-│  │      HCC_cell_metadata.txt.md5
-│  │      HCC_log_tpm_expression_matrix.txt
-│  │      HCC_log_tpm_expression_matrix.txt.gz.md5
+│  ├─processed_CNP0000650_CD45
+│  │    HCC_cell_metadata.txt
+│  │    HCC_cell_metadata.txt.md5
+│  │    HCC_log_tpm_expression_matrix.txt
+│  │    HCC_log_tpm_expression_matrix.txt.gz.md5
 │  │
 │  ├─processed_GSE140228_immune
-│  │      GSE140228_cell_info_Smartseq2.tsv
-│  │      GSE140228_gene_info_Smartseq2.tsv
-│  │      GSE140228_read_counts_Smartseq2.csv
+│  │    GSE140228_cell_info_Smartseq2.tsv
+│  │    GSE140228_gene_info_Smartseq2.tsv
+│  │    GSE140228_read_counts_Smartseq2.csv
 │  │
 │  └─processed_GSE149614
-│         GSE149614_HCC.scRNAseq.S71915.count.txt
-│         GSE149614_HCC.scRNAseq.S71915.normalized.txt
-│         HCC.metadata.txt
+│       GSE149614_HCC.scRNAseq.S71915.count.txt
+│       GSE149614_HCC.scRNAseq.S71915.normalized.txt
+│       HCC.metadata.txt
 │
 └─sc_data_mousebrain
    │  l1_cortex1.loom
@@ -281,10 +295,10 @@ dataset_sc_rnaseq
    │  l1_hypothalamus.loom
    │  l1_thalamus.loom
    └─cache
-           l1_cortex1.h5ad
-           l1_cortex2.h5ad
-           l1_cortex3.h5ad
-           l1_hippocampus.h5ad
+      l1_cortex1.h5ad
+      l1_cortex2.h5ad
+      l1_cortex3.h5ad
+      l1_hippocampus.h5ad
 ```
 
 ## PRISM2D mousebrain
@@ -315,10 +329,12 @@ The analysis of the 3D mouse brain data through spatial transcriptomics and sing
 
 Codes for different tissues are located at:
 
-`dataset/processed/20230704_PRISM3D_mousebrain_CTX_rm_doublet/PRISM3D_cell_typing_and_analysis.ipynb`
-`dataset/processed/20230705_PRISM3D_mousebrain_HT_rm_doublet/PRISM3D_cell_typing_and_analysis.ipynb`
-`dataset/processed/20230706_PRISM3D_mousebrain_TH_rm_doublet/PRISM3D_cell_typing_and_analysis.ipynb`
-`dataset/processed/20230710_PRISM3D_mousebrain_HP_rm_doublet/PRISM3D_cell_typing_and_analysis.ipynb`
+```
+dataset/processed/20230704_PRISM3D_mousebrain_CTX_confocal_processed/PRISM3D_cell_typing_and_analysis.ipynb
+dataset/processed/20230705_PRISM3D_mousebrain_HT_confocal_processed/PRISM3D_cell_typing_and_analysis.ipynb
+dataset/processed/20230706_PRISM3D_mousebrain_TH_confocal_processed/PRISM3D_cell_typing_and_analysis.ipynb
+dataset/processed/20230710_PRISM3D_mousebrain_HP_confocal_processed/PRISM3D_cell_typing_and_analysis.ipynb
+```
 
 ### Data Integration and Harmony
 

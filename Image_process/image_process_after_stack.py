@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from unittest.mock import patch
 import pandas as pd
@@ -23,7 +24,7 @@ from skimage.io import imsave
 
 SRC_DIR = Path(r"F:\spatial_data\raw")
 BASE_DIR = Path(r"F:\spatial_data\processed")
-RUN_ID = '20231226_FFPE_trial5_PRISM_3um_H2O2_after_FISH'
+RUN_ID = '20240708_PRISM30_TNBC_BZ02_CA2_TCR+mut'
 src_dir = SRC_DIR / RUN_ID
 dest_dir = BASE_DIR / f'{RUN_ID}_processed'
 
@@ -33,7 +34,7 @@ rgs_dir = dest_dir / 'registered'
 stc_dir = dest_dir / 'stitched'
 rsz_dir = dest_dir / 'resized'
 
-TileX, TileY = 15, 13
+TileX, TileY = 13, 11
 
 
 def resize_pad(img, size):
@@ -61,10 +62,8 @@ def resize_batch(in_dir, out_dir):
     cyc_paths = list(Path(in_dir).glob('cyc_*_*'))
     for cyc_path in cyc_paths:
         chn = cyc_path.name.split('_')[-1]
-        if chn == 'cy5':
-            shutil.copytree(cyc_path, Path(out_dir)/cyc_path.name)
-        else:
-            resize_dir(cyc_path, Path(out_dir)/cyc_path.name, chn)
+        if chn == 'cy5': shutil.copytree(cyc_path, Path(out_dir)/cyc_path.name)
+        else: resize_dir(cyc_path, Path(out_dir)/cyc_path.name, chn)
 
 
 def main():
@@ -114,36 +113,39 @@ def main():
     # imsave(stc_dir/'cyc_11_DAPI_crop.tif', im_crop)
 
 
-def test():
+def test_rsz_before_rgs():
+    cidre_walk(aif_dir, sdc_dir)
+    resize_batch(sdc_dir, rsz_dir)
+
     rgs_dir.mkdir(exist_ok=True)
     ref_cyc = 1
-    ref_chn = 'cy3'
-    ref_dir = sdc_dir / f'cyc_{ref_cyc}_{ref_chn}'
+    ref_chn_rgs = 'cy3' # cy5, FAM, TeRed
+    ref_dir = rsz_dir / f'cyc_{ref_cyc}_{ref_chn_rgs}'
     im_names = get_tif_list(ref_dir)
-    # meta_df = register_meta(
-    #    sdc_dir, rgs_dir, ['cy3', 'cy5', 'DAPI'], im_names, ref_cyc, ref_chn)
-    # meta_df.to_csv(rgs_dir / 'integer_offsets.csv')
 
+    meta_df = register_meta(str(rsz_dir), str(rgs_dir), ['cy3', 'cy5'], im_names, ref_cyc, ref_chn_rgs)
+    meta_df.to_csv(rgs_dir / 'integer_offsets.csv')
+    register_manual(rgs_dir/f'cyc_1_{ref_chn_rgs}', rsz_dir/'cyc_1_FAM', rgs_dir/'cyc_1_FAM')
+    register_manual(rgs_dir/f'cyc_1_{ref_chn_rgs}', rsz_dir/'cyc_1_TxRed', rgs_dir/'cyc_1_TxRed')
+    register_manual(rgs_dir/f'cyc_1_{ref_chn_rgs}', rsz_dir/'cyc_1_DAPI', rgs_dir/'cyc_1_DAPI')  # 0103 revised! Please remove this !
+    patch_tiles(rgs_dir/f'cyc_{ref_cyc}_{ref_chn_rgs}', TileX * TileY)
+
+    ref_chn_stc = 'cy5'
     stc_dir.mkdir(exist_ok=True)
-    patch_tiles(rgs_dir/'cyc_1_cy3', 29*19)
-    template_stitch(rgs_dir/'cyc_1_cy3', stc_dir, 29, 19)
+    template_stitch(rgs_dir/f'cyc_{ref_cyc}_{ref_chn_stc}', stc_dir, TileX, TileY)
 
-    offset_df = pd.read_csv(rgs_dir / 'integer_offsets.csv')
-    offset_df = offset_df.set_index('Unnamed: 0')
-    offset_df.index.name = None
+    offset_df = pd.read_csv(rgs_dir / 'integer_offsets.csv', index_col=0)
     stitch_offset(rgs_dir, stc_dir, offset_df)
 
 
-def stitch_test():
-    offset_df = pd.read_csv(rgs_dir / 'integer_offsets.csv')
-    offset_df = offset_df.set_index('Unnamed: 0')
-    offset_df.index.name = None
-    register_manual(rgs_dir/'cyc_10_DAPI', sdc_dir / 'cyc_11_DAPI', rgs_dir/'cyc_11_DAPI')
-    stitch_manual(rgs_dir/'cyc_11_DAPI', stc_dir, offset_df, 10, bleed=30)
-    im = imread(stc_dir/'cyc_11_DAPI.tif')
-    im_crop = im[10000:20000, 10000:20000]
-    imsave(stc_dir/'cyc_11_DAPI_crop.tif', im_crop)
-
-
 if __name__ == "__main__":
-    main()
+    # copy this file to the dest_dir
+    current_file_path = os.path.abspath(__file__)
+    target_file_path = os.path.join(dest_dir, os.path.basename(current_file_path))
+    try: shutil.copy(current_file_path, target_file_path)
+    except shutil.SameFileError: print('The file already exists in the destination directory.')
+    except PermissionError: print("Permission denied: Unable to copy the file.")
+    except FileNotFoundError: print("File not found: Source file does not exist.")
+    except Exception as e: print(f"An error occurred: {e}")
+    print('RUN_ID:', RUN_ID)
+    test_rsz_before_rgs()

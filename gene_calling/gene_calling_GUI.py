@@ -454,7 +454,7 @@ while True:
             intensity_thre = None
 
         if event == '-DONE-':
-            from lib.mannual_thre import relabel
+            from lib.manual_thre import relabel
             mode = values['-RELAYER_MODE-']
             if intensity_thre is not None:
                 intensity_thre = relabel(intensity_fra=intensity_thre, mask_dir=os.path.join(workdir, 'masks'), mode=mode, num_per_layer=num_per_layer)
