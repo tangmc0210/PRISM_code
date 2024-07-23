@@ -171,7 +171,7 @@ Edit the directory in python file `image_process/multi_channel_readout.py` as th
 python image_process/multi_channel_readout.py
 ```
 
-**Remark**: This step requires stitched big images generated in the previous step. Signal spots and their intensity can be extract using `image_process/multi_channel_readout.py`. It will generate two csv files named `intensity_all.csv` `intensity_all_deduplicated.csv` in the directory `RUN_IDx_processed/readout/`.
+**Remark**: This step requires stitched big images generated in the previous step. Signal spots and their intensity can be extract using `image_process/multi_channel_readout.py`. It will generate two csv files named `tmp/intensity_all.csv` `intensity_all_deduplicated.csv` in the directory `RUN_IDx_processed/readout/` and copy the .py file to the readout path, too.
 
 ## Image Process 3D
 
@@ -219,19 +219,21 @@ to read the intensity from raw images.
 
 ## Gene Calling
 
-Edit the directory in python file `gene_calling/gene_calling_GUI.py`, run the code:
+In this part, we recommand using `gene_calling/gene_calling_GMM.ipynb` as spots distribution in color space may differ between tissue types or cameras, but for a quick start, you can also use `gene_calling/gene_calling_GMM.py` by editting the directory in python file `gene_calling/gene_calling_GMM.py` and run the code:
 
 ```shell
-python gene_calling/gene_calling_GUI.py
+python gene_calling/gene_calling_GMM.py
 ```
 
-and follow the indications of each step. The result should be at `read_dir/mapped_genes.csv` as default, and you can choose another directory in the GUI.
+The result should be at `read_dir/mapped_genes.csv` as default.
 
 **Remark**: Gene calling for PRISM is performed by a Gaussian Mixture, mannual select by masks and evaluation of the confidence of each spot. It's expected to run on a GUI because some steps need human knowledge of the experiments like how the chemical environment or FRET would affect the fluorophores. You can also use `gene_calling/PRISM_gene_calling_GMM.ipynb` for customization or use `gene_calling/gene_calling_manual.ipynb` to set the threshold for each gene manually.
 
-For more detail, see https://github.com/Tangmc-kawa/PRISM_gene_calling.
+For more detail, see https://github.com/tangmc0210/PRISM_gene_calling.
 
 ## Cell Segmentation
+
+### Dapi centroids
 
 Edit the directory in python file `cell_segmentation/segment2D.py` or `cell_segmentation/segment3D.py` and run:
 
@@ -247,10 +249,18 @@ python cell_segmentation/segment3D.py
 
 This code will segment cell nucleus according to DAPI channel. A csv file containing the coordinate of nucleus centroid will be generated in`seg_dir` as `centroids_all.csv`.
 
+### Expression matrix
+
 Edit the directory in python file `gene_calling/expression_matrix.py`, and run:
 
 ```shell
-python cell_segmentation/expression_matrix.py
+python cell_segmentation/expression_matrix2D.py
+```
+
+or
+
+```shell
+python cell_segmentation/expression_matrix3D.py
 ```
 
 the expression matrix will be generated in `seg_dir` as `expression_matrix.csv`
@@ -258,7 +268,7 @@ the expression matrix will be generated in `seg_dir` as `expression_matrix.csv`
 **Remarks**:
 
 - `Segmentation3D.py` needs stardist environment as it use trained network to predict the shape and centroid of nucleus in 3D. For more information, see: https://github.com/stardist/stardist.
-- Our strategy to generate expression matris in general assign rna to its nearest centroid of cell nucleus (predicted by dapi) so it requires `centroids.csv(dapi_predict.csv)` of cell nucleus and `mapped_genes.csv` generated in previous steps. If you have other strategies which performed better in your data, you can replace this step with it.
+- Our strategy to generate expression matris in general assign rna to its nearest centroid of cell nucleus (predicted by dapi) so it requires `dapi_centroids.csv` of cell nucleus and `mapped_genes.csv` generated in previous steps. If you have other strategies which performed better in your data, you can replace this step with it.
 
 ---
 

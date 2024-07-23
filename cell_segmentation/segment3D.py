@@ -59,9 +59,8 @@ def segment3D(model, dapi_name, stc_dir, seg_dir):
     imwrite(predict_image_path, predict_image)
 
     # save centroid of stardist and gray scale as csv and save image
-    predict_centroid_path = seg_dir / f'{file_name}_predict_centroid.csv'
-    centroids_stardist = pd.DataFrame(centroids_stardist, columns=[
-                                      'z_in_pix', 'x_in_pix', 'y_in_pix'])
+    predict_centroid_path = seg_dir / f'{file_name}_centroid.csv'
+    centroids_stardist = pd.DataFrame(centroids_stardist, columns=['z_in_pix', 'x_in_pix', 'y_in_pix'])
     centroids_stardist.to_csv(predict_centroid_path)
 
 
