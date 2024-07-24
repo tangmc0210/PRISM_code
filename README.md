@@ -325,11 +325,11 @@ dataset_sc_rnaseq
 
 ## PRISM2D mousebrain
 
-You can get the cell typing data and figures using `N_cluster_scanpy.py` in `dataset\processed\PRISM2D_mousebrain`. Cells were first devided into excitory neurons, inhibitory neurons and glia. And subtypes like L4 Ex neuron, In-Sst neuron and oligodendrocyte were futher identified in their major types.
+You can get the cell typing data and figures using `path_to_mousebrain\N_cluster_scanpy.py`. Cells were first devided into excitory neurons, inhibitory neurons and glia. And subtypes like L4 Ex neuron, In-Sst neuron and oligodendrocyte were futher identified in their major types.
 
 ## PRISM2D mouseEmbryo
 
-26 Embryo slices of E12.5 to E14.5 are analyzed using `dataset/processed/PRISM2D_MouseEmbryo/Cell_typing_Embryo.ipynb`. Cell type is determined using gene with highest abundance in each cell. And spatial projection of each type can be seen here, too.
+26 Embryo slices of E12.5 to E14.5 are analyzed using `path_to_MouseEmbryo/Cell_typing_Embryo.ipynb`. Cell type is determined using gene with highest abundance in each cell. And spatial projection of each type can be seen here, too.
 
 ## PRISM HCC
 
@@ -339,11 +339,11 @@ Special attention was given to the issue of gene overfitting in the context of H
 
 ### PRISM2D HCC
 
-HCC analysis of 2D slice is in `dataset/processed/PRISM2D_HCC/PRISM_HCC_2D_cell_typing_and_analysis.ipynb`.
+HCC analysis of 2D slice is in `path_to_PRISM2D_HCC/PRISM_HCC_2D_cell_typing_and_analysis.ipynb`.
 
 ### PRISM3D HCC
 
-HCC analysis of Quasi-3D sample is in `dataset/processed/PRISM_HCC_of_20_slides/PRISM_HCC_3D_cell_typing_and_analysis.ipynb`
+HCC analysis of Quasi-3D sample is in `path_to_PRISM_HCC_of_20_slides/PRISM_HCC_3D_cell_typing_and_analysis.ipynb`
 
 ## PRISM3D mousebrain
 
@@ -352,10 +352,10 @@ The analysis of the 3D mouse brain data through spatial transcriptomics and sing
 Codes for different tissues are located at:
 
 ```
-dataset/processed/20230704_PRISM3D_mousebrain_CTX_confocal_processed/PRISM3D_cell_typing_and_analysis.ipynb
-dataset/processed/20230705_PRISM3D_mousebrain_HT_confocal_processed/PRISM3D_cell_typing_and_analysis.ipynb
-dataset/processed/20230706_PRISM3D_mousebrain_TH_confocal_processed/PRISM3D_cell_typing_and_analysis.ipynb
-dataset/processed/20230710_PRISM3D_mousebrain_HP_confocal_processed/PRISM3D_cell_typing_and_analysis.ipynb
+src_dir/20230704_PRISM3D_mousebrain_CTX_confocal_processed/PRISM3D_cell_typing_and_analysis.ipynb
+src_dir/20230705_PRISM3D_mousebrain_HT_confocal_processed/PRISM3D_cell_typing_and_analysis.ipynb
+src_dir/20230706_PRISM3D_mousebrain_TH_confocal_processed/PRISM3D_cell_typing_and_analysis.ipynb
+src_dir/20230710_PRISM3D_mousebrain_HP_confocal_processed/PRISM3D_cell_typing_and_analysis.ipynb
 ```
 
 ### Data Integration and Harmony
