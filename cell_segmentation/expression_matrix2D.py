@@ -6,7 +6,7 @@ from pathlib import Path
 from scipy.spatial import KDTree
 
 BASE_DIR = Path(r'F:\spatial_data\processed')
-RUN_ID = '20221219_PRISM_E13.5_2_3_Three'
+RUN_ID = '20240708_PRISM30_TNBC_BZ02_CA2_TCR+mut'
 
 def expression_matrix2D(RUN_ID):
     src_dir = BASE_DIR / f'{RUN_ID}_processed'

@@ -23,7 +23,7 @@ BLOCK_SIZE = 20000
 BLOCK_STRIDE = BLOCK_SIZE - 100
 
 BASE_DIR = Path(r'F:\spatial_data\processed')
-RUN_ID = '20221219_PRISM_E13.5_2_3_Three'
+RUN_ID = '20240708_PRISM30_TNBC_BZ02_CA2_TCR+mut'
 
 
 def segment_cell(im, offset_value=255, BLOCK_SIZE=251):

@@ -17,7 +17,7 @@ from pprint import pprint
 
 CHANNELS = ['cy5', 'TxRed', 'cy3', 'FAM']
 BASE_DIR = Path(r'F:\spatial_data\processed')
-RUN_ID = '20240626_FFPE_PRISM30_HCC_CA_5um_SudanBB'
+RUN_ID = '20240428_PRISM30_TNBC_BZ02_CA2'
 src_dir = BASE_DIR / f'{RUN_ID}_processed'
 stc_dir = src_dir / 'stitched'
 read_dir = src_dir / 'readout'
@@ -28,13 +28,14 @@ os.makedirs(tmp_dir, exist_ok=True)
 # parameters
 TOPHAT_KERNEL_SIZE = 7
 TOPHAT_BREAK = 100
-LOCAL_MAX_ABS_THRE = 100 # 200
+LOCAL_MAX_ABS_THRE = 500 # 200
+LOCAL_MAX_ABS_THRE_C = {'cy5': 500, 'TxRed': 500, 'cy3': 500, 'FAM': 1000}
 INTENSITY_THRE = None # INTENSITY_ABS_THRE should be a little bigger than LOCAL_MAX_ABS_THRE
 CAL_SNR = False
 
 # Threshold after extracting points
-SUM_THRESHOLD = 500 # SUM_THRESHOLD should be 5 * INTENSITY_ABS_THRE
-G_ABS_THRESHOLD = 1500
+SUM_THRESHOLD = 2000 # SUM_THRESHOLD should be 4 * INTENSITY_ABS_THRE
+G_ABS_THRESHOLD = 3000
 G_THRESHOLD = 3 #
 G_MAXVALUE = 5 #
 
@@ -136,7 +137,7 @@ def calculate_snr(image, points, neighborhood_size=10, verbose=True):
 
 
 def extract_signal(image_big, pad_x, cut_x, pad_y, cut_y, 
-                   tophat_mean, snr=8, # peak local max threshold
+                   tophat_mean, snr=8, abs_thre=LOCAL_MAX_ABS_THRE, # peak local max threshold
                    QUANTILE=0.1, # intensity threshold
                    check_snr=False, 
                    kernel=np.ones((5, 5), np.uint8)):
@@ -148,7 +149,7 @@ def extract_signal(image_big, pad_x, cut_x, pad_y, cut_y,
 
     # extract coordinates
     # coordinates = extract_coordinates(image, threshold_abs=snr * tophat_mean, quantile=QUANTILE)
-    coordinates = extract_coordinates(image, local_max_thre=min(LOCAL_MAX_ABS_THRE, tophat_mean * snr), intensity_thre=INTENSITY_THRE) #quantile=QUANTILE)
+    coordinates = extract_coordinates(image, local_max_thre=min(abs_thre, tophat_mean * snr), intensity_thre=INTENSITY_THRE) #quantile=QUANTILE)
 
     if check_snr: snr = calculate_snr(image_raw, coordinates)
     else: snr = None
@@ -256,7 +257,7 @@ def main(max_memory = 24): # unit: GB
             image_path = tmp_dir / f'cyc_1_{channel}.dat'
             image = np.memmap(str(image_path), dtype=memmap_dtype, mode='r', shape=memmap_shape)
             coordinate, snr, image_data = extract_signal(image, pad_x, cut_x, pad_y, cut_y, 
-                                                         snr=8, tophat_mean=tophat_mean_dict[channel], check_snr=check_snr)
+                                                         snr=8, tophat_mean=tophat_mean_dict[channel], abs_thre=LOCAL_MAX_ABS_THRE_C[channel], check_snr=check_snr)
             return channel, coordinate, snr, image_data
         
         with Pool() as pool:

@@ -177,17 +177,23 @@ python image_process/multi_channel_readout.py
 
 ### 3D tif files as input
 
-If your images are captured by confocal, lightsheet or any other 3D microscopy and you have a registered and stitched grayscale 3d image of each channel in tiff format. Spot extraction can be performed using airlocalize.py with proper parameters.
+If your images are captured by confocal, lightsheet or any other 3D microscopy and you have a registered and stitched grayscale 3d image of each channel in tiff format.
+
+We recommand you using AIRLOCALIZE in matlab to perform spots extraction because its well designed user interface for adjustment of proper parameters. Open MATLAB and run `AIRLOCALIZE.m` in `Image_process/lib/AIRLOCALIZE-MATLAB`. The input files should locate at `path_to_runid/RUN_ID_processed/stitched` and the output path should be `path_to_runid/RUN_ID_processed/readout/tmp`.
+
+Alternatively, spot extraction can be performed using airlocalize.py with proper parameters (set at `Image_process\lib\AIRLOCALIZE\parameters.yaml`).
 
 ```shell
 python image_process/lib/AIRLOCALIZE/airlocalize.py
 ```
 
+After that, intensity decoding and gene calling can be performed using `gene_calling\PRISM3D_intensity_readout_and_gene_calling.ipynb`.
+
 **Remarks**:
 
 - The default image axis is 'XYZ' in airlozalize, if you need other axis order like 'ZXY', please use np.transpose() in previous step or modify the 'self.retrieve_img()' function in `Image_process/lib/AIRLOCALIZE/airlocalize_data.py`.
 
-- AIRLOCALIZE was first written by . It includes predetection signal spots on a feature image(like DoG or LoG or Gaussian smoothed) and fit the accurate location and intensity of spots on original image. Important parameters includes:
+- AIRLOCALIZE includes predetection signal spots on a feature image(like DoG or LoG or Gaussian smoothed) and fit the accurate location and intensity of spots on original image. Important parameters includes:
 
 ```
 # scaling
@@ -219,7 +225,7 @@ to read the intensity from raw images.
 
 ## Gene Calling
 
-In this part, we recommand using `gene_calling/gene_calling_GMM.ipynb` as spots distribution in color space may differ between tissue types or cameras, but for a quick start, you can also use `gene_calling/gene_calling_GMM.py` by editting the directory in python file `gene_calling/gene_calling_GMM.py` and run the code:
+In this part, we recommand using `gene_calling/gene_calling_GMM.ipynb` when you have `readout/intensity.csv` because spots distribution in color space may differ between tissue types or cameras, but for a quick start, you can also use `gene_calling/gene_calling_GMM.py` by editting the directory in python file `gene_calling/gene_calling_GMM.py` and run the code:
 
 ```shell
 python gene_calling/gene_calling_GMM.py
@@ -227,7 +233,13 @@ python gene_calling/gene_calling_GMM.py
 
 The result should be at `read_dir/mapped_genes.csv` as default.
 
-**Remark**: Gene calling for PRISM is performed by a Gaussian Mixture, mannual select by masks and evaluation of the confidence of each spot. It's expected to run on a GUI because some steps need human knowledge of the experiments like how the chemical environment or FRET would affect the fluorophores. You can also use `gene_calling/PRISM_gene_calling_GMM.ipynb` for customization or use `gene_calling/gene_calling_manual.ipynb` to set the threshold for each gene manually.
+**Remark**:
+
+- Gene calling for PRISM is performed by a Gaussian Mixture, mannual select by masks and evaluation of the confidence of each spot. It's expected to run on a GUI because some steps need human knowledge of the experiments like how the chemical environment or FRET would affect the fluorophores.
+
+- You can also use `gene_calling/PRISM_gene_calling_GMM.ipynb` for customization or use `gene_calling/gene_calling_manual.ipynb` to set the threshold for each gene manually.
+
+- 3D gene calling in our article was performed in `gene_calling\PRISM3D_intensity_readout_and_gene_calling.ipynb`.
 
 For more detail, see https://github.com/tangmc0210/PRISM_gene_calling.
 
