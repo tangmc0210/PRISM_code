@@ -25,7 +25,7 @@ The pipeline can be explained as:
 
 ## Start from stitched raw images (relatively simple)
 
-1. Download our data from zenodo [MouseEmbryo Data](https://zenodo.org/uploads/12750725?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6IjNmMGQzNDhjLWYwOTItNDkzMy04MzEyLWNjNzVkNWY2YTc4NyIsImRhdGEiOnt9LCJyYW5kb20iOiI4MDJhYjhkMGRiYmM3NjE0MzJmNTVmZWE2MTNhZTcwZSJ9.T-2r0mRpqdI4cOm0Dl_vYfcpqjObMqVgL4eFWlmL-6eCMdbfVdRzpHZj9Ld9OdRXksJ9dMft5ui09AyJJqaadQ). And put them like the [Data architecture](#data-architecture).
+1. Download our data from zenodo [MouseEmbryo Data](https://zenodo.org/records/13219763). And put them like the [Data architecture](#data-architecture).
 
 2. Build the environment from this step [Build environment](#environment).
 
