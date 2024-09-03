@@ -47,8 +47,7 @@ def segment3D(model, dapi_name, stc_dir, seg_dir):
     block_size_z = int(np.sqrt(max_size / block_size_x))
     block_size = [block_size_x, block_size_y, block_size_z]
     predict_image, poly = model.predict_instances_big(raw_image, axes='ZYX',
-                                                      block_size=block_size, min_overlap=[
-                                                          30, 90, 90],
+                                                      block_size=block_size, min_overlap=[30, 90, 90],
                                                       context=[20, 40, 40],
                                                       labels_out_dtype=np.uint16, show_progress=True, predict_kwargs={'verbose': 0},
                                                       )

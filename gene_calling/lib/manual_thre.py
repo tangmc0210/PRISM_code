@@ -15,12 +15,15 @@ def relabel_mask(
     ylim=[-0.6, 0.5],
     mode="replace",
     num_per_layer=15,
+    G_layer=None,
 ):
     intensity_tmp = intensity.copy()
     x, y = mask.shape[0], mask.shape[1]
 
     if mode == "replace":
-        data = intensity[intensity['G_layer'] == (ori_label-1)//num_per_layer]
+        if G_layer is None: data = intensity[intensity['G_layer'] == (ori_label-1)//num_per_layer]
+        else: data = intensity[intensity['G_layer'] == G_layer]
+
     elif mode == "discard":
         data = intensity[intensity["label"] == ori_label]
         data["label"] = [-1] * len(data)
@@ -30,7 +33,8 @@ def relabel_mask(
     data['x'] = data['x'].astype(int)
     data['y'] = data['y'].astype(int)
     mask_values = mask[data['x'].values, data['y'].values]
-    data.loc[mask_values, 'label'] = ch_label
+    # print(data.loc[mask_values, 'label'])
+    data.loc[mask_values, 'label'] = [ch_label]*len(data.loc[mask_values, 'label'])
 
     intensity_tmp.loc[data.index, "label"] = data["label"]
     intensity_tmp = intensity_tmp[intensity_tmp["label"] != -1]

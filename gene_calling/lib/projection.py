@@ -1,3 +1,10 @@
+import os 
+import numpy as np
+from cmap import Colormap
+import matplotlib
+from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+import matplotlib.pyplot as plt
+
 
 # Interpolate colors to create a smoother colormap
 def interpolate_colors(colors, num_colors):
@@ -19,3 +26,95 @@ def interpolate_colors(colors, num_colors):
 
     return list(zip(interpolated_colors[0], interpolated_colors[1], interpolated_colors[2]))
 
+
+def generate_colormap(cmap='imagej:fire', num_colors=256):
+    # Load the 'fire' colormap using the custom Colormap class
+    cmap_custom = Colormap(cmap)
+
+    # Extract the colors from the custom colormap
+    percentile = 100
+    colors = [c for c in cmap_custom.iter_colors()]
+    colors = [colors[_] for _ in range(len(colors) * percentile // 100)]
+
+    # Interpolate to create a colormap with 256 colors
+    smooth_colors = interpolate_colors(colors, num_colors)
+
+    # Create a new ListedColormap
+    cmap_custom = ListedColormap(smooth_colors)
+    return cmap_custom
+
+
+def plot_params_generator(x, y, downsample_factor=100, edge=2000, cbar_width_inch = 0.2, fig_height_inch = 10):
+    cmap_fire = generate_colormap(cmap='imagej:fire', num_colors=256)
+    projection_yrange = y.min() - edge, y.max() + edge 
+    projection_xrange = x.min() - edge, x.max() + edge
+    bins = (int((projection_xrange[1] - projection_xrange[0]) // downsample_factor), 
+            int((projection_yrange[1] - projection_yrange[0]) // downsample_factor))
+
+    main_plot_width_inch = bins[0] / bins[1] * 10
+    fig_width_inch = main_plot_width_inch + cbar_width_inch + 1
+    left_space_inch = (fig_width_inch - main_plot_width_inch) / 2
+    plot_params = {
+        'cmap':cmap_fire, 'bins': bins,'left_space_inch': left_space_inch,
+        'projection_xrange': projection_xrange, 'projection_yrange': projection_yrange, 
+        'fig_width_inch': fig_width_inch, 'fig_height_inch': fig_height_inch,
+        'main_plot_width_inch': main_plot_width_inch, 'cbar_width_inch': cbar_width_inch,
+        }
+
+    return plot_params
+
+
+def projection_gene(x, y, gene_name='gene', outpath=None, plot_params_update=dict()):
+    plot_params = plot_params_generator(x, y)
+    plot_params.update(plot_params_update)
+    bins = plot_params['bins']
+    projection_xrange = plot_params['projection_xrange']
+    projection_yrange = plot_params['projection_yrange']
+    fig_width_inch = plot_params['fig_width_inch']
+    fig_height_inch = plot_params['fig_height_inch']
+    main_plot_width_inch = plot_params['main_plot_width_inch']
+    cbar_width_inch = plot_params['cbar_width_inch']
+    left_space_inch = plot_params['left_space_inch']
+    cmap = plot_params['cmap']
+
+    # Creating the 2D histogram
+    hist, *_ = np.histogram2d(x, y, bins=bins)
+    percentile_max = np.percentile(hist, 99.98)
+    percentile_min = min(max(1, np.percentile(hist, 90)), percentile_max // 4)
+    
+
+    fig = plt.figure(figsize=(fig_width_inch, fig_height_inch))
+    ax = fig.add_axes([left_space_inch/fig_width_inch, 0, main_plot_width_inch/fig_width_inch, 1])
+    fig.patch.set_facecolor('black')
+    plt.hist2d(x, y, 
+                range=[projection_xrange, projection_yrange],
+                bins=bins, 
+                vmax=percentile_max,
+                vmin=percentile_min,
+                cmap=cmap)
+    
+    ax.set_facecolor('black')
+    ax.xaxis.label.set_color('white')
+    ax.yaxis.label.set_color('white')
+    ax.title.set_color('white')
+
+    for spine in ax.spines.values():
+        spine.set_edgecolor('white')
+        spine.set_linestyle('--')
+        spine.set_alpha(0.5)
+
+    ax.tick_params(colors='white', which='both')
+
+    cax = fig.add_axes([1 - cbar_width_inch/fig_width_inch, 0, cbar_width_inch/fig_width_inch, 1])
+    cbar = plt.colorbar(cax=cax)
+    cbar.set_label('Counts', color='white')
+    cbar.ax.yaxis.set_tick_params(color='white')
+    cbar.ax.yaxis.set_tick_params(labelcolor='white')
+    cbar.formatter = matplotlib.ticker.FuncFormatter(lambda x, _: f'{round(x,1)}')
+    cbar.update_ticks()
+    
+    ax.set_title(gene_name, fontsize=20, fontstyle='italic')
+    plt.tight_layout()
+    if outpath is None: plt.show()
+    else: plt.savefig(os.path.join(outpath, f'{gene_name}.png'), dpi=300, bbox_inches='tight')
+    plt.close()
