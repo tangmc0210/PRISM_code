@@ -33,9 +33,8 @@ def relabel_mask(
     data['x'] = data['x'].astype(int)
     data['y'] = data['y'].astype(int)
     mask_values = mask[data['x'].values, data['y'].values]
-    # print(data.loc[mask_values, 'label'])
-    data.loc[mask_values, 'label'] = [ch_label]*len(data.loc[mask_values, 'label'])
-
+    
+    data.loc[mask_values, 'label'] = ch_label
     intensity_tmp.loc[data.index, "label"] = data["label"]
     intensity_tmp = intensity_tmp[intensity_tmp["label"] != -1]
 
