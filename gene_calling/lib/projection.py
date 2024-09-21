@@ -70,6 +70,24 @@ def plot_params_generator(x, y, downsample_factor=100, edge=0.05, cbar_width_inc
     return plot_params
 
 
+def customize_axis(ax, background_color='black', label_color='white', spine_color='white'):
+    # Set the background color
+    ax.set_facecolor(background_color)
+    
+    # Set tick color and label color
+    ax.tick_params(colors=label_color)
+    ax.xaxis.label.set_color(label_color)
+    ax.yaxis.label.set_color(label_color)
+    
+    if hasattr(ax, 'zaxis'):  # Check if it's a 3D plot
+        ax.zaxis.label.set_color(label_color)
+        ax.zaxis.set_tick_params(colors=label_color)
+    
+    # Set the spines (borders) to white
+    for spine in ax.spines.values():
+        spine.set_edgecolor(spine_color)
+        
+
 def projection_gene(x, y, gene_name='gene', outpath=None, plot_params_update=dict()):
     plot_params = plot_params_generator(x, y)
     plot_params.update({'ax':None})

@@ -8,7 +8,7 @@ from tqdm import tqdm
 from pathos.multiprocessing import ProcessingPool as Pool
 
 import cv2
-from skimage.io import imread
+# from skimage.io import imread
 from scipy.spatial import KDTree
 from skimage.feature import peak_local_max
 import tifffile
@@ -17,9 +17,9 @@ from pprint import pprint
 
 CHANNELS = ['cy5', 'TxRed', 'cy3', 'FAM']
 BASE_DIR = Path(r'F:\spatial_data\processed')
-RUN_ID = '20240428_PRISM30_TNBC_BZ02_CA2'
+RUN_ID = '20240913_PRISM_new64_Mouse_Brain_change_primer_3_6um_R_improve'
 src_dir = BASE_DIR / f'{RUN_ID}_processed'
-stc_dir = src_dir / 'stitched'
+stc_dir = src_dir / 'stitched_cut'
 read_dir = src_dir / 'readout'
 tmp_dir = read_dir / 'tmp'
 os.makedirs(read_dir, exist_ok=True)
@@ -27,16 +27,17 @@ os.makedirs(tmp_dir, exist_ok=True)
 
 # parameters
 TOPHAT_KERNEL_SIZE = 7
-TOPHAT_BREAK = 100
-LOCAL_MAX_ABS_THRE = 500 # 200
-LOCAL_MAX_ABS_THRE_C = {'cy5': 500, 'TxRed': 500, 'cy3': 500, 'FAM': 1000}
+TOPHAT_BREAK = 100 # 100
+# LOCAL_MAX_ABS_THRE = 200 # 200
+LOCAL_MAX_ABS_THRE_CH = {'cy5': 200, 'TxRed': 200, 'FAM': 200, 'cy3': 200}
+# LOCAL_MAX_ABS_THRE_CH = {'cy3': None, 'cy5': None, 'FAM': None, 'TxRed': None}
 INTENSITY_THRE = None # INTENSITY_ABS_THRE should be a little bigger than LOCAL_MAX_ABS_THRE
 CAL_SNR = False
 
 # Threshold after extracting points
-SUM_THRESHOLD = 2000 # SUM_THRESHOLD should be 4 * INTENSITY_ABS_THRE
-G_ABS_THRESHOLD = 3000
-G_THRESHOLD = 3 #
+SUM_THRESHOLD = 1000 # SUM_THRESHOLD should be 4 * INTENSITY_ABS_THRE
+G_ABS_THRESHOLD = 1400
+# G_THRESHOLD = 3 #
 G_MAXVALUE = 5 #
 
 
@@ -45,7 +46,7 @@ def tophat_spots(image):
     return cv2.morphologyEx(image, cv2.MORPH_TOPHAT, kernel)
 
 
-def divide_main(shape, max_volume=10**8, overlap=500, data_dict=None):
+def divide_main(shape, max_volume=10**8, overlap=500, data_dict=None, verbose=True):
     def decorator(func):
         def wrapper(*args, **kwargs):
             if len(shape) == 3:
@@ -59,11 +60,12 @@ def divide_main(shape, max_volume=10**8, overlap=500, data_dict=None):
             y_num = -(-(yrange - overlap) // (xy_size - overlap))
             cut_x = xrange // x_num + overlap
             cut_y = yrange // y_num + overlap
-            print(f"n_tile: {x_num * y_num};",
+
+            if verbose: print(f"n_tile: {x_num * y_num};",
                   f"\nx_slice_num: {x_num};", f"y_slice_num: {y_num};",
                   f"\nblock_x: {cut_x};", f"block_y: {cut_y};", f"overlap: {overlap};")
             
-            with tqdm(total=x_num * y_num, desc='tile') as pbar:
+            with tqdm(total=x_num * y_num, desc='tile', disable=not verbose) as pbar:
                 for x_pos in range(x_num):
                     pad_x = x_pos * (cut_x - overlap)  # 计算当前x块的pad_x
                     for y_pos in range(y_num):
@@ -137,7 +139,7 @@ def calculate_snr(image, points, neighborhood_size=10, verbose=True):
 
 
 def extract_signal(image_big, pad_x, cut_x, pad_y, cut_y, 
-                   tophat_mean, snr=8, abs_thre=LOCAL_MAX_ABS_THRE, # peak local max threshold
+                   tophat_mean, snr=8, abs_thre=200, # peak local max threshold
                    QUANTILE=0.1, # intensity threshold
                    check_snr=False, 
                    kernel=np.ones((5, 5), np.uint8)):
@@ -149,7 +151,8 @@ def extract_signal(image_big, pad_x, cut_x, pad_y, cut_y,
 
     # extract coordinates
     # coordinates = extract_coordinates(image, threshold_abs=snr * tophat_mean, quantile=QUANTILE)
-    coordinates = extract_coordinates(image, local_max_thre=min(abs_thre, tophat_mean * snr), intensity_thre=INTENSITY_THRE) #quantile=QUANTILE)
+    if abs_thre is None: coordinates = extract_coordinates(image, local_max_thre=tophat_mean * snr, intensity_thre=INTENSITY_THRE) #quantile=QUANTILE)
+    else: coordinates = extract_coordinates(image, local_max_thre=min(abs_thre, tophat_mean * snr), intensity_thre=INTENSITY_THRE) #quantile=QUANTILE)
 
     if check_snr: snr = calculate_snr(image_raw, coordinates)
     else: snr = None
@@ -257,7 +260,7 @@ def main(max_memory = 24): # unit: GB
             image_path = tmp_dir / f'cyc_1_{channel}.dat'
             image = np.memmap(str(image_path), dtype=memmap_dtype, mode='r', shape=memmap_shape)
             coordinate, snr, image_data = extract_signal(image, pad_x, cut_x, pad_y, cut_y, 
-                                                         snr=8, tophat_mean=tophat_mean_dict[channel], abs_thre=LOCAL_MAX_ABS_THRE_C[channel], check_snr=check_snr)
+                                                         snr=8, tophat_mean=tophat_mean_dict[channel], abs_thre=LOCAL_MAX_ABS_THRE_CH[channel], check_snr=check_snr)
             return channel, coordinate, snr, image_data
         
         with Pool() as pool:
@@ -286,7 +289,7 @@ def main(max_memory = 24): # unit: GB
     global intensity
     intensity = pd.DataFrame()
 
-    @divide_main(shape=image_shape, max_volume=max_volume, overlap=500)
+    @divide_main(shape=image_shape, max_volume=max_volume, overlap=500, verbose=False)
     def stitch_all_block(**kwargs):
         global intensity
         pad_x = kwargs['pad_x']
@@ -322,30 +325,27 @@ def main(max_memory = 24): # unit: GB
     intensity.to_csv(tmp_dir / 'intensity_raw.csv')
     print('raw_read:', len(intensity))
 
-    # crosstalk elimination
-    intensity['B'] = intensity['B'] - intensity['G'] * 0.25
-    intensity['B'] = np.maximum(intensity['B'], 0)
+    # # crosstalk elimination
+    # intensity['B'] = intensity['B'] - intensity['G'] * 0.25
+    # intensity['B'] = np.maximum(intensity['B'], 0)
 
     # Scale
     intensity['Scaled_R'] = intensity['R']
     intensity['Scaled_Ye'] = intensity['Ye']
     intensity['Scaled_G'] = intensity['G'] * 2.5
-    intensity['Scaled_B'] = intensity['B']
+    intensity['Scaled_B'] = intensity['B'] * 0.75
 
     # threshold by intensity
-    intensity['sum'] = intensity['Scaled_R'] + intensity['Scaled_Ye'] + intensity['Scaled_B'] + 1
+    intensity['sum'] = intensity['Scaled_R'] + intensity['Scaled_Ye'] + intensity['Scaled_B']
 
     # normalize
-    # intensity['R/A'] = intensity['Scaled_R'] / intensity['sum']
-    # intensity['Ye/A'] = intensity['Scaled_Ye'] / intensity['sum']
-    # intensity['B/A'] = intensity['Scaled_B'] / intensity['sum']
     intensity['G/A'] = intensity['Scaled_G'] / intensity['sum']
 
     # threshold by intensity
-    intensity = intensity[(intensity['sum'] >= SUM_THRESHOLD) | ((intensity['G/A'] >= G_THRESHOLD) & (intensity['Scaled_G'] > G_ABS_THRESHOLD))]
+    # intensity = intensity[(intensity['sum'] >= SUM_THRESHOLD) | ((intensity['G/A'] >= G_THRESHOLD) & (intensity['Scaled_G'] > G_ABS_THRESHOLD))]
+    intensity = intensity[intensity['sum'] >= SUM_THRESHOLD]
     intensity = intensity.dropna()
     intensity.loc[intensity['G/A'] > G_MAXVALUE, 'G/A'] = G_MAXVALUE
-    # intensity['G/A'] = intensity['G/A'] * np.exp(0.8 * intensity['Ye/A'])
     print('drop_low_intensity:', len(intensity))
 
 

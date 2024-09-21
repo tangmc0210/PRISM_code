@@ -23,6 +23,12 @@ The pipeline can be explained as:
 
 # Quick Start for PRISM decoding
 
+## clone thie repo to your repo/app path
+
+```bash
+git clone --depth 1 https://github.com/tangmc0210/PRISM_code
+```
+
 ## Start from stitched raw images (relatively simple)
 
 1. Download our data from zenodo [MouseEmbryo Data](https://zenodo.org/records/13219763). And put them like the [Data architecture](#data-architecture).

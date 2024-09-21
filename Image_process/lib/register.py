@@ -5,8 +5,9 @@ from pathlib import Path
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
-from skimage.io import imread
-from skimage.io import imsave
+from tifffile import imread, imwrite
+# from skimage.io import imread
+# from skimage.io import imsave
 from skimage.registration import phase_cross_correlation
 from scipy.ndimage import fourier_shift
 
@@ -83,7 +84,7 @@ def register_manual(ref_dir, src_dir, dest_dir, im_names=None):
         src_im = imread(src_dir/im_name)
         shift = get_shift(ref_im, src_im)
         out_im = register(src_im, shift)
-        imsave(dest_dir/im_name, out_im, check_contrast=False)
+        imwrite(dest_dir/im_name, out_im)
 
 
 # def register_meta(in_dir, out_dir, chns, names, ref_cyc=1, ref_chn='cy3'):
@@ -189,8 +190,7 @@ def register_meta(in_dir, out_dir, chns, names, ref_cyc=1, ref_chn='cy3'):
     offset_dict = {}
     ref_dir = Path(in_dir) / f'cyc_{ref_cyc}_{ref_chn}'
     ref_list = [c for c in cyc_chn_list if c.name.split('_')[2] == ref_chn]
-    if ref_dir in ref_list:
-        ref_list.remove(ref_dir)
+    if ref_dir in ref_list: ref_list.remove(ref_dir)
 
     for name in tqdm(names, desc='Registering'):
         offsets = []
@@ -209,7 +209,7 @@ def register_meta(in_dir, out_dir, chns, names, ref_cyc=1, ref_chn='cy3'):
             
             offsets.append(offset)
             out_im = register(src_im, shift_res)
-            imsave(dest_dir / name, out_im, check_contrast=False)
+            imwrite(dest_dir / name, out_im)
             
             for chn in [c for c in chns if c != ref_chn]:
                 cyc_chn_alt = Path(in_dir) / f'cyc_{cyc}_{chn}'
@@ -218,7 +218,7 @@ def register_meta(in_dir, out_dir, chns, names, ref_cyc=1, ref_chn='cy3'):
                     dest_dir_alt.mkdir(exist_ok=True)
                     src_im = imread(cyc_chn_alt / name)
                     out_im = register(src_im, shift_res)
-                    imsave(dest_dir_alt / name, out_im, check_contrast=False)
+                    imwrite(dest_dir_alt / name, out_im)
 
         offset_dict[name] = offsets
 

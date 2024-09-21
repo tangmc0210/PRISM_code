@@ -6,16 +6,11 @@ import re
 
 
 def relabel_mask(
-    intensity,
-    plot_column=["X_coor_gaussian", "Y_coor_gaussian"],
-    mask=np.array,
-    ori_label=int,
-    ch_label=int,
-    xlim=[-0.8, 0.8], 
-    ylim=[-0.6, 0.5],
-    mode="replace",
-    num_per_layer=15,
-    G_layer=None,
+    intensity, plot_column=["X_coor_gaussian", "Y_coor_gaussian"],
+    mask=np.array, mode="replace", 
+    ori_label=int, ch_label=int,
+    xlim=[-0.8, 0.8], ylim=[-0.6, 0.5],
+    num_per_layer=15, G_layer=None,
 ):
     intensity_tmp = intensity.copy()
     x, y = mask.shape[0], mask.shape[1]
@@ -42,7 +37,7 @@ def relabel_mask(
 
 
 def relabel(intensity_fra, mask_dir, mode="discard", num_per_layer=15, xrange=[-0.8, 0.8], yrange=[-0.6, 0.8]):
-    re_label = [re.search(r"mask_(\d+)\.png", filename).group(1) for filename in os.listdir(mask_dir)]
+    re_label = [match.group(1) for filename in os.listdir(mask_dir) if (match := re.search(r"mask_(\d+)\.png$", filename))]
     if len(re_label) == 0: return intensity_fra
 
     intensity_fra_relabel = intensity_fra.copy()

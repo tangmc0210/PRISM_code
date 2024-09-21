@@ -24,7 +24,7 @@ from skimage.io import imsave
 
 SRC_DIR = Path(r"F:\spatial_data\raw")
 BASE_DIR = Path(r"F:\spatial_data\processed")
-RUN_ID = '20240708_PRISM30_TNBC_BZ02_CA2_TCR+mut'
+RUN_ID = '20240905_PRISM_64_Mouse_Brain_adjust_3'
 src_dir = SRC_DIR / RUN_ID
 dest_dir = BASE_DIR / f'{RUN_ID}_processed'
 
@@ -34,7 +34,7 @@ rgs_dir = dest_dir / 'registered'
 stc_dir = dest_dir / 'stitched'
 rsz_dir = dest_dir / 'resized'
 
-TileX, TileY = 13, 11
+TileX, TileY = 16, 19
 
 
 def resize_pad(img, size):
@@ -62,7 +62,7 @@ def resize_batch(in_dir, out_dir):
     cyc_paths = list(Path(in_dir).glob('cyc_*_*'))
     for cyc_path in cyc_paths:
         chn = cyc_path.name.split('_')[-1]
-        if chn == 'cy5': shutil.copytree(cyc_path, Path(out_dir)/cyc_path.name)
+        if chn == 'cy5': shutil.copytree(cyc_path, Path(out_dir)/cyc_path.name, dirs_exist_ok=True)
         else: resize_dir(cyc_path, Path(out_dir)/cyc_path.name, chn)
 
 
@@ -98,9 +98,6 @@ def main():
     template_stitch(rsz_dir/f'cyc_{ref_cyc}_{ref_chn_1}', stc_dir, TileX, TileY)
 
     offset_df = pd.read_csv(rgs_dir / 'integer_offsets.csv', index_col=0)
-    # offset_df = offset_df.set_index('Unnamed: 0')
-    # offset_df.index.name = None
-
 
     stitch_offset(rgs_dir, stc_dir, offset_df)
 
@@ -119,7 +116,7 @@ def test_rsz_before_rgs():
 
     rgs_dir.mkdir(exist_ok=True)
     ref_cyc = 1
-    ref_chn_rgs = 'cy3' # cy5, FAM, TeRed
+    ref_chn_rgs = 'cy3' # cy5
     ref_dir = rsz_dir / f'cyc_{ref_cyc}_{ref_chn_rgs}'
     im_names = get_tif_list(ref_dir)
 
@@ -127,10 +124,10 @@ def test_rsz_before_rgs():
     meta_df.to_csv(rgs_dir / 'integer_offsets.csv')
     register_manual(rgs_dir/f'cyc_1_{ref_chn_rgs}', rsz_dir/'cyc_1_FAM', rgs_dir/'cyc_1_FAM')
     register_manual(rgs_dir/f'cyc_1_{ref_chn_rgs}', rsz_dir/'cyc_1_TxRed', rgs_dir/'cyc_1_TxRed')
-    register_manual(rgs_dir/f'cyc_1_{ref_chn_rgs}', rsz_dir/'cyc_1_DAPI', rgs_dir/'cyc_1_DAPI')  # 0103 revised! Please remove this !
+    # register_manual(rgs_dir/f'cyc_1_{ref_chn_rgs}', rsz_dir/'cyc_1_DAPI', rgs_dir/'cyc_1_DAPI')  # 0103 revised! Please remove this !
     patch_tiles(rgs_dir/f'cyc_{ref_cyc}_{ref_chn_rgs}', TileX * TileY)
 
-    ref_chn_stc = 'cy5'
+    ref_chn_stc = 'cy3' # cy5, FAM, TeRed
     stc_dir.mkdir(exist_ok=True)
     template_stitch(rgs_dir/f'cyc_{ref_cyc}_{ref_chn_stc}', stc_dir, TileX, TileY)
 

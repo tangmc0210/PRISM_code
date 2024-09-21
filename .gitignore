@@ -1,3 +1,6 @@
+# vscode
+.vscode/
+
 # pycache
 __pycache__/
 *.pyc
@@ -5,8 +8,6 @@ __pycache__/
 # test file
 *develop/
 *test*
+*lightsheet*
 git-batch-upload.bat
 split_csv.ipynb
-
-# vscode
-.vscode/

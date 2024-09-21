@@ -1,4 +1,5 @@
 import re
+import os
 from pathlib import Path
 from tkinter import image_names
 import numpy as np
@@ -6,6 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 from skimage.io import imread
 from skimage.io import imsave
+from tifffile import TiffFile, imwrite
 import matlab.engine
 
 
@@ -33,6 +35,54 @@ def patch_tiles(in_dir, tile_num):
             imsave(str(im_path), temp_im, check_contrast=False)
 
 
+def patch_z_tiles(stack_dir):
+    # 初始化一个变量来存储全局的最大Z层数
+    max_z = 0
+    
+    # 遍历所有以 "cyc_" 开头的文件夹，计算全局最大Z层数
+    for folder_name in os.listdir(stack_dir):
+        folder_path = os.path.join(stack_dir, folder_name)
+        
+        if os.path.isdir(folder_path) and folder_name.startswith('cyc_'):
+            # 遍历该文件夹中的所有TIFF文件
+            for file_name in os.listdir(folder_path):
+                if file_name.endswith('.tif') or file_name.endswith('.tiff'):
+                    file_path = os.path.join(folder_path, file_name)
+                    
+                    # 先读取Z层数而不加载整个图像
+                    with TiffFile(file_path) as tif:
+                        z_layers = tif.series[0].shape[0]  # 获取Z层数
+                        max_z = max(max_z, z_layers)  # 更新全局最大Z层数
+                        
+    print(f"Global max Z layers: {max_z}")
+    
+    # 开始补齐Z层
+    for folder_name in os.listdir(stack_dir):
+        folder_path = os.path.join(stack_dir, folder_name)
+        
+        if os.path.isdir(folder_path) and folder_name.startswith('cyc_'):
+            for file_name in os.listdir(folder_path):
+                if file_name.endswith('.tif') or file_name.endswith('.tiff'):
+                    file_path = os.path.join(folder_path, file_name)
+                    
+                    # 先读取Z层数
+                    with TiffFile(file_path) as tif:
+                        z_current = tif.series[0].shape[0]  # 获取当前Z层数
+                        
+                        # 如果Z层数小于全局最大Z层数，则补齐Z层
+                        if z_current < max_z:
+                            # 此时再加载图像数据
+                            image_stack = tif.asarray()
+                            
+                            # 在Z=0的位置补齐
+                            padding = np.zeros((max_z - z_current,) + image_stack.shape[1:], dtype=image_stack.dtype)
+                            image_stack_patched = np.concatenate([padding, image_stack], axis=0)
+                            
+                            # 将补齐后的TIFF文件保存回去（覆盖原文件）
+                            imwrite(file_path, image_stack_patched)
+                            print(f"Patched {file_name} in {folder_name} from {z_current} to {max_z} layers.")
+                                
+                        
 def template_stitch(in_dir, out_dir, tile_x, tile_y):
     """Stitch a series of images in a directory.
 
